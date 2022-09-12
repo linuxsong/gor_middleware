@@ -164,3 +164,12 @@ func SetHTTPHeader(payload, name, value string) (string, error) {
 	}
 	return payload[:header["vstart"].(int)] + " " + value + "\r\n" + payload[header["end"].(int):], nil
 }
+
+// HTTPBody return HTTP Body
+func HTTPBody(payload string) (body string, err error) {
+	bodyIndex := strings.Index(payload, "\r\n\r\n")
+	if bodyIndex != -1 {
+		return payload[bodyIndex+4:], nil
+	}
+	return
+}
