@@ -68,16 +68,16 @@ func (gor *Gor) On(
 	}
 	gor.lock.Lock()
 	if idx != "" {
-		if c, ok := gor.tempQueue[channel]; ok {
-			c = append(c, inmsg)
+		if _, ok := gor.tempQueue[channel]; ok {
+			gor.tempQueue[channel] = append(gor.tempQueue[channel], inmsg)
 		} else {
 			newChan := make([]*InterFunc, 0)
 			newChan = append(newChan, inmsg)
 			gor.tempQueue[channel] = newChan
 		}
 	} else {
-		if c, ok := gor.retainQueue[channel]; ok {
-			c = append(c, inmsg)
+		if _, ok := gor.retainQueue[channel]; ok {
+			gor.retainQueue[channel] = append(gor.retainQueue[channel], inmsg)
 		} else {
 			newChan := make([]*InterFunc, 0)
 			newChan = append(newChan, inmsg)
@@ -96,7 +96,10 @@ func (gor *Gor) Emit(msg *GorMessage) error {
 	chanIDs := [2]string{"message", chanPrefix}
 	resp := msg
 	for _, chanID := range chanIDs {
-		if funcs, ok := gor.retainQueue[chanID]; ok {
+		gor.lock.Lock()
+		funcs, ok := gor.retainQueue[chanID]
+		gor.lock.Unlock()
+		if ok {
 			for _, f := range funcs {
 				r := f.fn(gor, msg, f.args...)
 				if r != nil {
@@ -108,12 +111,13 @@ func (gor *Gor) Emit(msg *GorMessage) error {
 
 	// lazy remove registered events in gor.cleanOldChannel goroutine
 	tempChanID := fmt.Sprintf("%s#%s", chanPrefix, msg.ID)
-	if funcs, ok := gor.tempQueue[tempChanID]; ok {
+	gor.lock.Lock()
+	funcs, ok := gor.tempQueue[tempChanID]
+	gor.lock.Unlock()
+	if ok {
 		var f *InterFunc
 		tmp := make([]*InterFunc, 0)
-		gor.lock.Lock()
 		tmp, funcs = funcs[:], funcs[len(funcs):]
-		gor.lock.Unlock()
 		for len(tmp) > 0 {
 			f, tmp = tmp[0], tmp[1:]
 			r := f.fn(gor, msg, f.args...)

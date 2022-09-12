@@ -1,1 +1,1 @@
-module github.com/amyangfei/gor_middleware
+module github.com/linuxsong/gor_middleware
