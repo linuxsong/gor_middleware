@@ -197,6 +197,8 @@ func (gor *Gor) preProcessor() {
 
 func (gor *Gor) receiver() {
 	scanner := bufio.NewScanner(os.Stdin)
+	buf := make([]byte, 0, 1024*1024)
+	scanner.Buffer(buf, 1024*1024)
 	for scanner.Scan() {
 		gor.input <- scanner.Text()
 	}
